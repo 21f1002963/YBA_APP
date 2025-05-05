@@ -11,6 +11,8 @@
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		CF25F443DA34409495D4E9C5 /* ComicRelief-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 613FFB0C4B084E5A82D79660 /* ComicRelief-Bold.ttf */; };
+		AF9D6F7DFE264CDC8C0F6118 /* ComicRelief-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AFB1CEE33ACB4A79B4692F0D /* ComicRelief-Regular.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -35,6 +37,8 @@
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = YBA_APP/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = YBA_APP/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		613FFB0C4B084E5A82D79660 /* ComicRelief-Bold.ttf */ = {isa = PBXFileReference; name = "ComicRelief-Bold.ttf"; path = "../assets/fonts/ComicRelief-Bold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		AFB1CEE33ACB4A79B4692F0D /* ComicRelief-Regular.ttf */ = {isa = PBXFileReference; name = "ComicRelief-Regular.ttf"; path = "../assets/fonts/ComicRelief-Regular.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -93,6 +97,7 @@
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				BBD78D7AC51CEA395F1C20DB /* Pods */,
+				9E8D5125E59846A0AD43FFE6 /* Resources */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -115,6 +120,16 @@
 			);
 			path = Pods;
 			sourceTree = "<group>";
+		};
+		9E8D5125E59846A0AD43FFE6 /* Resources */ = {
+			isa = "PBXGroup";
+			children = (
+				613FFB0C4B084E5A82D79660 /* ComicRelief-Bold.ttf */,
+				AFB1CEE33ACB4A79B4692F0D /* ComicRelief-Regular.ttf */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+			path = "";
 		};
 /* End PBXGroup section */
 
@@ -185,6 +200,8 @@
 			files = (
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
+				CF25F443DA34409495D4E9C5 /* ComicRelief-Bold.ttf in Resources */,
+				AF9D6F7DFE264CDC8C0F6118 /* ComicRelief-Regular.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

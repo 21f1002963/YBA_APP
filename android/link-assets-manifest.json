@@ -1,0 +1,13 @@
+{
+  "migIndex": 1,
+  "data": [
+    {
+      "path": "assets/fonts/ComicRelief-Bold.ttf",
+      "sha1": "599d06a1b3eef8f533630d244d6b9708889ed99a"
+    },
+    {
+      "path": "assets/fonts/ComicRelief-Regular.ttf",
+      "sha1": "1fad66321f03fc0a86c98d0f41c863927c658baa"
+    }
+  ]
+}
