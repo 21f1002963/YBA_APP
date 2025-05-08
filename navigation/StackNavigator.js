@@ -10,6 +10,9 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import HomeScreen from '../screens/HomeScreen';
 import AttendanceScreen from '../screens/AttendanceScreen';
 import FeesScreen from '../screens/FeesScreen';
+import PlayerDetail from '../screens/PlayerDetail';
+import Players from '../screens/Players';
+import Tournaments from '../screens/Tournaments';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -43,8 +46,8 @@ const StackNavigator = () => {
                 })}
             >
                 <Tab.Screen
-                    name="Home"
-                    component={HomeScreen}
+                    name="HomeTab"
+                    component={HomeStack}
                     options={{
                         headerShown: false,
                         tabBarIcon: ({ focused }) => (
@@ -88,15 +91,44 @@ const StackNavigator = () => {
         );
     }
 
+    const PopupScreen = () => {
+        return (
+            <Stack.Navigator screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="Popup" component={Popup} />
+            </Stack.Navigator>
+        );
+    }
+
+    function HomeStack() {
+        return (
+            <Stack.Navigator screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="HomeScreen" component={HomeScreen}
+                    options={{
+                        headerShown: false
+                    }} />
+                <Stack.Screen name="Tournaments" component={Tournaments}
+                    options={{
+                        headerShown: false
+                    }} />
+                <Stack.Screen name="Players" component={Players}
+                    options={{
+                        headerShown: false
+                    }} />
+                <Stack.Screen name="PlayerDetail" component={PlayerDetail}
+                    options={{
+                        headerShown: false
+                    }} />
+            </Stack.Navigator>
+        );
+    }
+
     return (
         <NavigationContainer>
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
-                {isLoading ? (
-                    <Stack.Screen name="Popup" component={Popup} />
-                ) : (
-                    <Stack.Screen name="Main" component={BottomTabs} />
-                )}
-            </Stack.Navigator>
+            {isLoading ? (
+                <PopupScreen />
+            ) : (
+                <BottomTabs />
+            )}
         </NavigationContainer>
     );
 }

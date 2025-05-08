@@ -7,9 +7,6 @@ import { Platform } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { Image } from 'react-native';
 import { TouchableOpacity } from 'react-native';
-import Animated, { useRef } from 'react-native';
-import { TouchableWithoutFeedback } from 'react-native';
-import { Keyboard } from 'react-native';
 // import LinearGradient from 'react-native-linear-gradient';
 
 const HomeScreen = () => {
@@ -20,39 +17,12 @@ const HomeScreen = () => {
   ])
   const [searchQuery, setSearchQuery] = useState('');
 
-  const swipeProgress = useRef(new Animated.Value(0)).current;
-
-  // Animated styles for the header components
-  const headerTranslateY = swipeProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -180], // Move the header up by its height
-    extrapolate: 'clamp',
-  });
-
-  const imageOpacity = swipeProgress.interpolate({
-    inputRange: [0, 0.7],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
-  });
-
-  const profileTranslateY = swipeProgress.interpolate({
-    inputRange: [0, 0.7],
-    outputRange: [20, -80], // Adjust as needed
-    extrapolate: 'clamp',
-  });
-
-  const contentTranslateY = swipeProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [180, 0], // Move the content up as the header goes away
-    extrapolate: 'clamp',
-  });
-
   const renderScene = ({ route }) => {
     switch (route.key) {
       case 'tournaments':
         return <Tournaments />
       case 'players':
-        return <Players />
+        return <Players/> 
       default:
         return null
     }
@@ -60,26 +30,8 @@ const HomeScreen = () => {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
-      <Animated.View style={{
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 20,
-        backgroundColor: 'black',
-        overflow: 'hidden',
-        paddingBottom: 20,
-        transform: [{ translateY: headerTranslateY }]
-      }}>
-        <Animated.View style={{
-          width: '100%',
-          height: 180,
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          overflow: 'hidden',
-          opacity: imageOpacity,
-        }}>
-          {/* <View style={{ alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}> */}
-          {/* <View style={{ marginTop: 0, width: '100%', height: 180, backgroundColor: 'black', position: 'relative' }}> */}
+      <View style={{ alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+        <View style={{ marginTop: 0, width: '100%', height: 180, backgroundColor: 'black', position: 'relative' }}>
           <Image
             source={require('../assets/basketball.jpeg')}
             style={{
@@ -90,15 +42,19 @@ const HomeScreen = () => {
               transform: [{ translateY: 20 }],
               // zIndex: 2,
             }}></Image>
-          <Animated.View style={{
-            position: 'absolute',
-            right: 140,
-            top: 230,
-            alignItems: 'center',
-            justifyContent: 'center',
-            transform: [{ translateY: profileTranslateY }],
-          }}>
 
+
+          <TouchableOpacity
+            style={{
+              position: 'absolute',
+              right: 140,
+              top: 230,
+              width: 60,
+              height: 60,
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
             <View style={{
               position: 'absolute',
               bottom: 50,
@@ -126,40 +82,21 @@ const HomeScreen = () => {
                 }}
               />
             </View>
-          </Animated.View>
-        </Animated.View>
+          </TouchableOpacity>
+        </View>
 
-        {/* <TouchableOpacity
-            style={{
-              position: 'absolute',
-              right: 140,
-              top: 230,
-              width: 60,
-              height: 60,
-              alignItems: 'center',
-              justifyContent: 'center'
-              }}
-              > */}
-        {/* </TouchableOpacity> */}
-
-        <View style={{
+        <Text style={{
+          fontSize: 30,
+          fontWeight: 'bold',
+          color: 'black',
           marginTop: 60,
           marginLeft: 20,
-          alignSelf: 'flex-start',
+          fontFamily: Platform.select({
+            ios: 'ComicRelief-Regular',    // iOS
+            android: 'comicrelief_regular' // Android
+          })
         }}>
-          <Text style={{
-            fontSize: 30,
-            fontWeight: 'bold',
-            color: 'white',
-            marginTop: 60,
-            marginLeft: 20,
-            fontFamily: Platform.select({
-              ios: 'ComicRelief-Regular',    // iOS
-              android: 'comicrelief_regular' // Android
-            })
-          }}>
-            YBA</Text>
-        </View>
+          YBA</Text>
 
         <View style={{
           flexDirection: 'row', alignItems: 'center', marginTop: 10, width: '90%', flexDirection: 'row',
@@ -168,8 +105,8 @@ const HomeScreen = () => {
           paddingHorizontal: 15,
           height: 45,
           marginHorizontal: 16,
-          borderWidth: 1,
-          borderColor: '#ddd',
+          borderWidth: 2,
+          borderColor: 'grey',
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.1,
@@ -193,7 +130,7 @@ const HomeScreen = () => {
             }}
           />
         </View>
-      </Animated.View>
+      </View>
       <TabView
         navigationState={{ index, routes }}
         renderScene={renderScene}
@@ -225,8 +162,8 @@ const HomeScreen = () => {
             activeColor="#7b2cbf" // Deep purple
             inactiveColor="#6c757d" // Muted gray
             tabStyle={{
-              borderRightWidth: 1,
-              borderRightColor: '#f0f0f0',
+              borderRightWidth: 3,
+              borderRightColor: 'grey',
               paddingBottom: 6,
             }}
             renderLabel={({ route, focused, color }) => (
@@ -253,7 +190,7 @@ const HomeScreen = () => {
           />
         )}
       ></TabView>
-    </SafeAreaView >
+    </SafeAreaView>
   )
 }
 

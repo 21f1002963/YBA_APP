@@ -38,7 +38,7 @@ const Popup = () => {
                       }}></Image>
                     {/* <Text style={{ fontSize: 19, opacity: 0.7 }}>Youth Basketball Academy</Text> */}
                     {/* <Text style={{ fontSize: 19, opacity: 0.7 }}>Udaipur</Text> */}
-                    <Text style={{ fontStyle: 'italic', marginTop: 40, paddingBottom: 90, fontSize: 18, fontWeight: '700' }}>' We will Sir '</Text>
+                    <Text style={{ fontStyle: 'italic', marginTop: 40, paddingBottom: 90, fontSize: 18, fontWeight: '700', alignSelf: 'center', textAlign: 'center' }}>' Great things come from perseverance.              No excuses '</Text>
                     <ActivityIndicator size="large" color="#007AFF" style={{ paddingBottom: 90 }} />
                 </View>
             {/* </ImageBackground> */}

@@ -82,9 +82,6 @@ const Tournaments = () => {
     );
   };
 
-
-
-
   return (
     <View style={{
       flex: 1,
@@ -252,6 +249,7 @@ const Tournaments = () => {
               />
 
               <Text style={{ fontSize: 17, marginBottom: 8 }}>From : </Text>
+              
               <View style={{
                 position: 'relative',
                 marginBottom: 16,
