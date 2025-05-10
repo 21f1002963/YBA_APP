@@ -8,12 +8,13 @@ import { Image } from 'react-native';
 const Popup = () => {
     // const backgroundImage = require('../assets/background.jpg');
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: 'white', borderColor: 'black', borderWidth: 2, borderRadius: 20, margin: 5, padding: 5 }}>
-            {/* <ImageBackground source={backgroundImage} style={{
+        <SafeAreaView style={{ flex: 1, backgroundColor: 'black' }}>
+            <View style={{ flex: 1, backgroundColor: 'white', borderColor: 'black', borderWidth: 2, borderRadius: 20, margin: 2, padding: 5 }}>
+                {/* <ImageBackground source={backgroundImage} style={{
                 flex: 1,
                 justifyContent: 'center',
                 alignItems: 'center',
-            }}> */}
+                }}> */}
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', }}>
                     <BasketballAnimation />
                     {/* <Text style={{
@@ -25,23 +26,24 @@ const Popup = () => {
                         elevation: 5,
                         marginTop: 10,
                         letterSpacing: 2
-                    }}>YBA</Text> */}
+                        }}>YBA</Text> */}
                     <Image source={require('../assets/YBA.jpg')}
-                    style={{
-                        width: 370,
-                        height: 220,
-                        borderRadius: 2,
-                        resizeMode: 'cover',
-                        // marginTop: 30,
-                        marginBottom: 70,
-                        marginRight: 7
-                      }}></Image>
+                        style={{
+                            width: 370,
+                            height: 220,
+                            borderRadius: 2,
+                            resizeMode: 'cover',
+                            // marginTop: 30,
+                            marginBottom: 70,
+                            marginRight: 7
+                        }}></Image>
                     {/* <Text style={{ fontSize: 19, opacity: 0.7 }}>Youth Basketball Academy</Text> */}
                     {/* <Text style={{ fontSize: 19, opacity: 0.7 }}>Udaipur</Text> */}
                     <Text style={{ fontStyle: 'italic', marginTop: 40, paddingBottom: 90, fontSize: 18, fontWeight: '700', alignSelf: 'center', textAlign: 'center' }}>' Great things come from perseverance.              No excuses '</Text>
                     <ActivityIndicator size="large" color="#007AFF" style={{ paddingBottom: 90 }} />
                 </View>
-            {/* </ImageBackground> */}
+                {/* </ImageBackground> */}
+            </View>
         </SafeAreaView>
     );
 }

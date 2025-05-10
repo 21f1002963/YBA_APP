@@ -3,8 +3,6 @@ import React, { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { TextInput } from 'react-native-gesture-handler';
-import Ionicons from 'react-native-vector-icons/Ionicons';
-import AntDesign from 'react-native-vector-icons/AntDesign';
 const FeesScreen = () => {
   // Sample player data with payment status
   const [players, setPlayers] = useState([
@@ -75,13 +73,13 @@ const FeesScreen = () => {
               onChangeText={setPaymentAmount}
             />
             <View style={styles.modalButtons}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.modalButton, styles.cancelButton]}
                 onPress={() => setShowPaymentModal(false)}
               >
                 <Text style={styles.buttonText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.modalButton, styles.confirmButton]}
                 onPress={() => markPayment(selectedPlayer.id)}
               >
@@ -92,6 +90,35 @@ const FeesScreen = () => {
         </View>
       )}
 
+      <View style={{ backgroundColor: 'black' }}>
+        <View style={{
+          padding: 20,
+          alignItems: 'center',
+          backgroundColor: '#1a237e',
+          borderTopLeftRadius: 20,
+          borderTopRightRadius: 20,
+          elevation: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.2,
+          shadowRadius: 6,
+          zIndex: 100, // Ensures header stays above other elements
+          borderBottomWidth: 2,
+          borderBottomColor: '#0d47a1',
+        }}>
+          <Text style={{
+            fontSize: 24,
+            fontWeight: '700', // Extra bold
+            textTransform: 'uppercase', // Makes text stand out more
+            letterSpacing: 1.2, // Improves readability
+            textShadowColor: 'rgba(0, 0, 0, 0.3)', // Subtle text shadow
+            textShadowOffset: { width: 1, height: 1 },
+            textShadowRadius: 2,
+            color: 'white',
+          }}>Fees Records</Text>
+        </View>
+      </View>
+      
       {/* Main Content */}
       <SectionList
         sections={sections}
@@ -105,12 +132,12 @@ const FeesScreen = () => {
             <View style={styles.playerInfo}>
               <Text style={styles.playerName}>{item.name}</Text>
               <Text style={styles.paymentInfo}>
-                {item.paid ? `Paid ₹${item.amount} on ${item.lastPayment}` : 
-                 `Due: ₹${item.amount} (${item.defaultMonths || 0} months)`}
+                {item.paid ? `Paid ₹${item.amount} on ${item.lastPayment}` :
+                  `Due: ₹${item.amount} (${item.defaultMonths || 0} months)`}
               </Text>
             </View>
             {!item.paid && (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.payButton}
                 onPress={() => {
                   setSelectedPlayer(item);

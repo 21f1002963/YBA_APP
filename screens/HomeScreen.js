@@ -155,7 +155,7 @@ const HomeScreen = () => {
             }}
             labelStyle={{
               fontWeight: '600',
-              fontSize: 16,
+              fontSize: 20,
               textTransform: 'none',
               marginBottom: 8,
             }}
@@ -171,7 +171,7 @@ const HomeScreen = () => {
                 <Text style={{
                   color,
                   fontWeight: focused ? '800' : '600',
-                  fontSize: 16,
+                  fontSize: 20,
                   letterSpacing: 0.5,
                 }}>
                   {route.title}

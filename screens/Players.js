@@ -12,6 +12,7 @@ import { launchCamera } from 'react-native-image-picker';
 import { useNavigation } from '@react-navigation/native'; // Added for navigation
 import { useFocusEffect } from '@react-navigation/native'; // Added for focus effect
 import { PlayerDetail } from './PlayerDetail'; // Assuming PlayerDetail is in the same directory
+import AwesomeAlert from 'react-native-awesome-alerts';
 
 const Players = () => {
   const [hovered, setHovered] = useState(false);
@@ -19,31 +20,44 @@ const Players = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [openDatePicker, setOpenDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedCategory, setSelectedCategory] = useState('All');
   const navigation = useNavigation(); // Added for navigation
   const [playerPhotos, setPlayerPhotos] = useState({}); // Store player photos {id: uri}
+  const getAgeCategory = (dob) => {
+    const birthDate = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+
+    if (age <= 13) return 'U13';
+    if (age <= 16) return 'U16';
+    if (age <= 18) return 'U18';
+    if (age <= 23) return 'U23';
+    return 'Senior';
+  };
+
   const [players, setPlayers] = useState([ // Made players a state for potential dynamic changes
-    { id: 1, name: "Rhythm Pawar", dob: "2000-01-01", contact: "1234567890", address: "123 Street" },
-    { id: 2, name: "Ayona Eldos", dob: "2001-02-02", contact: "0987654321", address: "456 Avenue" },
-    { id: 3, name: "Mohit Kumar", dob: "1999-03-03", contact: "1122334455", address: "789 Boulevard" },
-    { id: 4, name: "Ponnu ", dob: "1998-04-04", contact: "5566778899", address: "101 Parkway" },
+    { id: 1, name: "Rhythm Pawar", position: 'Point Guard', dob: "2010-10-20", contact: "7568913051", address: "3/136 GoverdhanVilas Sector-14 Udaipur", joinDate: "2023-10-01" }, // U13
+    { id: 2, name: "Ayona Eldos", position: 'Point Guard', dob: "2007-02-02", contact: "0987654321", address: "456 Avenue", joinDate: "2020-10-01" }, // U16
+    { id: 3, name: "Mohit Kumar", position: 'Point Guard', dob: "2005-03-03", contact: "1122334455", address: "789 Boulevard", joinDate: "2023-08-01" }, // U18
+    { id: 4, name: "Ponnu", position: 'Point Guard', dob: "2000-04-04", contact: "5566778899", address: "101 Parkway", joinDate: "2023-07-01" }, // U23
+    { id: 5, name: "P", position: 'Guard', dob: "2000-04-04", contact: "5566778899", address: "101 Parkway", joinDate: "2025-02-01" },
   ]);
 
   const initialNewPlayerState = {
     name: '',
+    position: '',
     dob: '',
     contact: '',
     address: '',
+    joinDate: new Date().toISOString().split('T')[0], // Default to today
   };
 
   const [newPlayer, setNewPlayer] = useState(initialNewPlayerState);
-
-  const handleDOBConfirm = (date) => {
-    setOpenDatePicker(false);
-    setSelectedDate(date);
-
-    const formattedDate = date.toISOString().split('T')[0];
-    setNewTournament({ ...newTournament, dob: formattedDate });
-  };
 
   const handleHover = () => {
     Animated.spring(scaleValue, {
@@ -52,6 +66,13 @@ const Players = () => {
     }).start();
     setHovered(!hovered);
   };
+
+  useEffect(() => {
+    AsyncStorage.setItem('PlayerData', JSON.stringify(players))
+      .then(() => console.log('Player data saved successfully'))
+      .catch(error => console.error('Failed to save player data', error));
+  }
+    , [players]); // Save players to AsyncStorage whenever it changes
 
   useEffect(() => {
     const loadData = async () => {
@@ -67,112 +88,160 @@ const Players = () => {
     loadData();
   }, []);
 
-  const requestCameraPermission = async () => {
-    if (Platform.OS === 'android') {
-      try {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.CAMERA,
-          {
-            title: "Camera Permission",
-            message: "This app needs access to your camera to take photos.",
-            buttonNeutral: "Ask Me Later",
-            buttonNegative: "Cancel",
-            buttonPositive: "OK"
-          }
-        );
-        return granted === PermissionsAndroid.RESULTS.GRANTED;
-      } catch (err) {
-        console.warn("Camera permission request error:", err);
-        return false;
-      }
-    }
-    return true; // For iOS, permissions are typically handled via Info.plist or prompted by the library
+  const handleDelete = (playerId) => {
+    const playerToDelete = players.find(t => t.id === playerId);
+
+    Alert.alert(
+      'Confirm Delete',
+      `Delete ${playerToDelete?.name || 'this player'}?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          onPress: () => confirmDelete(playerId),
+          style: 'destructive',
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
-  const handleTakePhoto = async (playerId) => {
-    const hasPermission = await requestCameraPermission();
-    if (!hasPermission) {
-      Alert.alert("Permission Denied", "Camera access is required to take photos.");
-      return;
-    }
+  const confirmDelete = (playerId) => {
+    setPlayers(prevPlayers => prevPlayers.filter(player => player.id !== playerId));
+    Alert.alert(
+      'Success',
+      'Player deleted successfully',
+      [{ text: 'OK' }]
+    );
+  };
 
-    const options = {
-      mediaType: 'photo',
-      quality: 0.7,
-      saveToPhotos: true, // Useful to save the photo to the device gallery
-    };
+  // Filter players by selected category
+  const filteredPlayers = selectedCategory === 'All'
+    ? players
+    : players.filter(player => getAgeCategory(player.dob) === selectedCategory);
 
-    try {
-      const result = await launchCamera(options);
+  // Group players by month they joined
+  const groupPlayersByJoinMonth = (players) => {
+    // First sort all players by joinDate in descending order (newest first)
+    const sortedPlayers = [...players].sort((a, b) => {
+      return new Date(b.joinDate) - new Date(a.joinDate);
+    });
 
-      if (result.didCancel) {
-        console.log('User cancelled camera');
-      } else if (result.errorCode) {
-        Alert.alert("Camera Error", `Could not take photo: ${result.errorMessage || result.errorCode}`);
-        console.error('ImagePicker Error: ', result.errorCode, result.errorMessage);
-      } else if (result.assets && result.assets.length > 0 && result.assets[0].uri) {
-        setPlayerPhotos(prev => ({
-          ...prev,
-          [playerId]: result.assets[0].uri
-        }));
-      } else {
-        Alert.alert("Camera Error", "Could not get photo URI.");
+    const grouped = {};
+
+    sortedPlayers.forEach(player => {
+      const joinDate = new Date(player.joinDate);
+      const monthYear = `${joinDate.toLocaleString('default', { month: 'long' })} ${joinDate.getFullYear()}`;
+
+      if (!grouped[monthYear]) {
+        grouped[monthYear] = [];
       }
-    } catch (error) {
-      console.error('Launch camera error:', error);
-      Alert.alert("Camera Error", "Failed to launch camera. Please try again.");
-    }
+
+      grouped[monthYear].push(player);
+    });
+
+    return grouped;
+  };
+
+  const groupedPlayers = groupPlayersByJoinMonth(filteredPlayers);
+
+  const handleDOBConfirm = (date) => {
+    setOpenDatePicker(false);
+    setSelectedDate(date);
+    const formattedDate = date.toISOString().split('T')[0];
+    setNewPlayer({ ...newPlayer, dob: formattedDate });
   };
 
   const handleSubmit = async () => {
-    try {
-      await AsyncStorage.setItem(
-        'PlayerData', // Consider if this should store the whole players list or just form template
-        JSON.stringify(newPlayer)
-      );
-    } catch (error) {
-      console.error("Failed to save player data", error);
+    if (!newPlayer.name || !newPlayer.dob || !newPlayer.position) {
+      Alert.alert('Error', 'Please fill all required fields');
+      return;
     }
-    setModalVisible(false);
-    setNewPlayer(initialNewPlayerState); // Reset form
-  };
 
-  const handleDelete = (playerIdToDelete) => {
-    Alert.alert("Delete Player", `Player with ID ${playerIdToDelete} would be deleted. (Implement actual deletion)`);
+    const newPlayerWithId = {
+      ...newPlayer,
+      id: players.length > 0 ? Math.max(...players.map(p => p.id)) + 1 : 1,
+      joinedDate: new Date().toISOString().split('T')[0] // Set current date as joined date
+    };
+
+    setPlayers([...players, newPlayerWithId]);
+    setModalVisible(false);
+    setNewPlayer(initialNewPlayerState);
   };
 
   return (
     <View style={styles.container}>
+      <View style={styles.categoryContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoryScroll}
+        >
+          {['All', 'U13', 'U16', 'U18', 'U23', 'Senior'].map(category => (
+            <TouchableOpacity
+              key={category}
+              style={[
+                styles.categoryButton,
+                selectedCategory === category && styles.selectedCategoryButton
+              ]}
+              onPress={() => setSelectedCategory(category)}
+            >
+              <Text style={[
+                styles.categoryButtonText,
+                selectedCategory === category && styles.selectedCategoryText
+              ]}>
+                {category}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
       <ScrollView style={{ marginBottom: 0 }}>
-        {players.map((player) => (
-          <TouchableOpacity
-            key={player.id}
-            onPress={() => navigation.navigate('PlayerDetail', { player })} // Navigate to PlayerDetail
-            style={styles.playerCard} // Apply styles to the card
-          >
-            <View style={styles.playerPhotoContainer}>
-              {playerPhotos[player.id] ? (
-                <Image
-                  source={{ uri: playerPhotos[player.id] }}
-                  style={styles.playerPhoto}
-                />
-              ) : (
-                <MaterialCommunityIcons name="camera-plus-outline" size={24} color="#666" />
-              )}
+        {Object.keys(groupedPlayers).length > 0 ? (
+          Object.entries(groupedPlayers).map(([monthYear, monthPlayers]) => (
+            <View key={monthYear}>
+              <Text style={styles.monthHeader}>{monthYear}</Text>
+              {monthPlayers.map((player) => (
+                <TouchableOpacity
+                  key={player.id}
+                  onPress={() => navigation.navigate('PlayerDetail', { player })}
+                  style={styles.playerCard}
+                >
+                  <View style={styles.playerPhotoContainer}>
+                    {playerPhotos[player.id] ? (
+                      <Image
+                        source={{ uri: playerPhotos[player.id] }}
+                        style={styles.playerPhoto}
+                      />
+                    ) : (
+                      <MaterialCommunityIcons name="camera-plus-outline" size={24} color="#666" />
+                    )}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.playerName}>{player.name}</Text>
+                    <Text style={styles.playerAge}>
+                      Joined On - {player.joinDate.split('-').reverse().join('-')}
+                    </Text>
+                  </View>
+                  <View style={styles.actionsContainer}>
+                    <TouchableOpacity
+                      style={styles.deleteButton}
+                      onPress={() => handleDelete(player.id)}
+                    >
+                      <MaterialCommunityIcons name="delete-outline" size={22} color="red" />
+                    </TouchableOpacity>
+                  </View>
+                </TouchableOpacity>
+              ))}
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.playerName}>{player.name}</Text>
-            </View>
-            <View style={styles.actionsContainer}>
-              <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={() => handleDelete(player.id)}
-              >
-                <MaterialCommunityIcons name="delete-outline" size={22} color="red" />
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        ))}
+          ))
+        ) : (
+          <Text style={styles.noPlayersText}>No players found in this category</Text>
+        )}
       </ScrollView>
 
 
@@ -186,7 +255,7 @@ const Players = () => {
           onPress={() => setModalVisible(true)}
           onPressIn={handleHover}
           onPressOut={handleHover}
-          activeOpacity={0.7}
+          activeOpacity={0.2}
         >
           <View style={styles.addButtonContent}>
             <Text style={styles.addButtonText}>+</Text>
@@ -219,6 +288,16 @@ const Players = () => {
                 placeholderTextColor="#999"
                 onChangeText={(text) => setNewPlayer({ ...newPlayer, name: text })}
               />
+
+              <Text style={styles.inputLabel}>Position:</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Enter player position"
+                value={newPlayer.position}
+                placeholderTextColor="#999"
+                onChangeText={(text) => setNewPlayer({ ...newPlayer, position: text })}
+              />
+
 
               <Text style={styles.inputLabel}>DOB:</Text>
               <View style={{
@@ -295,6 +374,7 @@ const Players = () => {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
     </View>
   );
 }
@@ -302,6 +382,58 @@ const Players = () => {
 export default Players;
 
 const styles = StyleSheet.create({
+  categoryContainer: {
+    marginBottom: 15,
+  },
+  categoryScroll: {
+    paddingHorizontal: 5,
+    gap: 0
+  },
+  categoryButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+    marginRight: 9,
+  },
+  selectedCategoryButton: {
+    backgroundColor: '#6200EE',
+  },
+  categoryButtonText: {
+    fontSize: 15,
+    color: '#555',
+    fontWeight: '500',
+  },
+  selectedCategoryText: {
+    color: 'white',
+  },
+  monthHeader: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 20,
+    marginBottom: 10,
+    color: '#6200EE',
+    paddingLeft: 10,
+  },
+  playerPosition: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  playerAge: {
+    fontSize: 13,
+    color: 'orange',
+    marginTop: 2,
+  },
+  noPlayersText: {
+    textAlign: 'center',
+    marginTop: 40,
+    color: '#888',
+    fontSize: 18,
+    fontWeight: '500',
+    verticalAlign: 'middle',
+    lineHeight: 100, // Centering text vertically
+  },
   container: {
     flex: 1,
     padding: 15,
@@ -362,6 +494,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 6,
     elevation: 5,
+    opacity: 0.8
   },
   addButtonContent: {
     flexDirection: 'row',
@@ -372,8 +505,7 @@ const styles = StyleSheet.create({
   },
   addButtonText: {
     color: 'white',
-    fontSize: 28, // Adjusted for visibility
-    fontWeight: 'bold', // Make it bolder
+    fontSize: 38, // Adjusted for visibility
     lineHeight: 30, // Adjust line height for vertical centering if needed
   },
   modalOverlay: {

@@ -13,6 +13,8 @@ import FeesScreen from '../screens/FeesScreen';
 import PlayerDetail from '../screens/PlayerDetail';
 import Players from '../screens/Players';
 import Tournaments from '../screens/Tournaments';
+import CoachAssessment from '../screens/CoachAssessment';
+import DailyMetrics from '../screens/DailyMetrics';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -115,6 +117,14 @@ const StackNavigator = () => {
                         headerShown: false
                     }} />
                 <Stack.Screen name="PlayerDetail" component={PlayerDetail}
+                    options={{
+                        headerShown: false
+                    }} />
+                <Stack.Screen name="CoachAssessment" component={CoachAssessment}
+                    options={{
+                        headerShown: false
+                    }} />    
+                <Stack.Screen name="DailyMetrics" component={DailyMetrics}
                     options={{
                         headerShown: false
                     }} />
