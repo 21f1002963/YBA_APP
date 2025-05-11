@@ -24,6 +24,7 @@ import {
   ReloadInstructions,
 } from 'react-native/Libraries/NewAppScreen';
 import StackNavigator from './navigation/StackNavigator';
+import { PlayersProvider } from './playersContext';
 
 function Section({ children, title }) {
   const isDarkMode = useColorScheme() === 'dark';
@@ -70,7 +71,9 @@ function App() {
   const safePadding = '5%';
 
   return (
-    <StackNavigator></StackNavigator>
+    <PlayersProvider>
+      <StackNavigator></StackNavigator>
+    </PlayersProvider>
   );
 }
 

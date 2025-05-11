@@ -13,6 +13,10 @@ import { useNavigation } from '@react-navigation/native'; // Added for navigatio
 import { useFocusEffect } from '@react-navigation/native'; // Added for focus effect
 import { PlayerDetail } from './PlayerDetail'; // Assuming PlayerDetail is in the same directory
 import AwesomeAlert from 'react-native-awesome-alerts';
+import { getPlayerImage } from '../utils/playerStorage';
+import { playersData } from '../utils/playersData';
+import { PlayersContext } from '../playersContext';
+import { useContext } from 'react'; // Added for context
 
 const Players = () => {
   const [hovered, setHovered] = useState(false);
@@ -22,31 +26,52 @@ const Players = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedCategory, setSelectedCategory] = useState('All');
   const navigation = useNavigation(); // Added for navigation
-  const [playerPhotos, setPlayerPhotos] = useState({}); // Store player photos {id: uri}
   const getAgeCategory = (dob) => {
     const birthDate = new Date(dob);
     const today = new Date();
+
+    // Calculate full years
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
+    const dayDiff = today.getDate() - birthDate.getDate();
 
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    // Adjust age if birthday hasn't occurred yet this year
+    if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
       age--;
     }
 
-    if (age <= 13) return 'U13';
-    if (age <= 16) return 'U16';
-    if (age <= 18) return 'U18';
-    if (age <= 23) return 'U23';
-    return 'Senior';
-  };
+    // Calculate exact age in years and months
+    let months = (today.getFullYear() - birthDate.getFullYear()) * 12;
+    months += today.getMonth() - birthDate.getMonth();
+    if (dayDiff < 0) months--; // Adjust if birthday hasn't passed this month
+    const exactAge = months / 12; // Age in decimal years (e.g., 14.5)
 
-  const [players, setPlayers] = useState([ // Made players a state for potential dynamic changes
-    { id: 1, name: "Rhythm Pawar", position: 'Point Guard', dob: "2010-10-20", contact: "7568913051", address: "3/136 GoverdhanVilas Sector-14 Udaipur", joinDate: "2023-10-01" }, // U13
-    { id: 2, name: "Ayona Eldos", position: 'Point Guard', dob: "2007-02-02", contact: "0987654321", address: "456 Avenue", joinDate: "2020-10-01" }, // U16
-    { id: 3, name: "Mohit Kumar", position: 'Point Guard', dob: "2005-03-03", contact: "1122334455", address: "789 Boulevard", joinDate: "2023-08-01" }, // U18
-    { id: 4, name: "Ponnu", position: 'Point Guard', dob: "2000-04-04", contact: "5566778899", address: "101 Parkway", joinDate: "2023-07-01" }, // U23
-    { id: 5, name: "P", position: 'Guard', dob: "2000-04-04", contact: "5566778899", address: "101 Parkway", joinDate: "2025-02-01" },
-  ]);
+    // Basketball Federation of India Age Categories
+    if (exactAge < 12) return 'U12';
+    if (exactAge > 12 && exactAge <= 14) return 'U14';  // 12-13.99 years
+    if (exactAge > 14 && exactAge <= 17) return 'U17';  // 14-15.99 years
+    if (exactAge > 16 && exactAge <= 19) return 'U19';  // 16-17.99 years
+    if (exactAge > 18 && exactAge <= 23) return 'U23'; // 18-23 years
+    return 'Senior'; // 24+ years
+  };
+  const { players, playerPhotos, addPlayer, deletePlayer, updatePlayerPhoto } = useContext(PlayersContext);
+
+
+  useEffect(() => {
+    const loadPlayerPhotos = async () => {
+      const photos = {};
+      await Promise.all(
+        players.map(async (player) => {
+          const imageUri = await getPlayerImage(player.id);
+          if (imageUri) {
+            photos[player.id] = imageUri;
+          }
+        })
+      );
+      setPlayerPhotos(photos);
+    };
+    loadPlayerPhotos();
+  }, [players]);
 
   const initialNewPlayerState = {
     name: '',
@@ -110,12 +135,8 @@ const Players = () => {
   };
 
   const confirmDelete = (playerId) => {
-    setPlayers(prevPlayers => prevPlayers.filter(player => player.id !== playerId));
-    Alert.alert(
-      'Success',
-      'Player deleted successfully',
-      [{ text: 'OK' }]
-    );
+    deletePlayer(playerId); // Use context function
+    Alert.alert('Success', 'Player deleted successfully');
   };
 
   // Filter players by selected category
@@ -160,14 +181,7 @@ const Players = () => {
       Alert.alert('Error', 'Please fill all required fields');
       return;
     }
-
-    const newPlayerWithId = {
-      ...newPlayer,
-      id: players.length > 0 ? Math.max(...players.map(p => p.id)) + 1 : 1,
-      joinedDate: new Date().toISOString().split('T')[0] // Set current date as joined date
-    };
-
-    setPlayers([...players, newPlayerWithId]);
+    addPlayer(newPlayer); // Use context function
     setModalVisible(false);
     setNewPlayer(initialNewPlayerState);
   };
@@ -180,7 +194,7 @@ const Players = () => {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.categoryScroll}
         >
-          {['All', 'U13', 'U16', 'U18', 'U23', 'Senior'].map(category => (
+          {['All', 'Senior', 'U12', 'U14', 'U17', 'U19', 'U23'].map(category => (
             <TouchableOpacity
               key={category}
               style={[
@@ -205,10 +219,19 @@ const Players = () => {
           Object.entries(groupedPlayers).map(([monthYear, monthPlayers]) => (
             <View key={monthYear}>
               <Text style={styles.monthHeader}>{monthYear}</Text>
+
               {monthPlayers.map((player) => (
                 <TouchableOpacity
                   key={player.id}
-                  onPress={() => navigation.navigate('PlayerDetail', { player })}
+                  onPress={() => navigation.navigate('PlayerDetail', {
+                    playerId: player.id,
+                    onPhotoUpdate: (newImageUri) => {
+                      setPlayerPhotos(prev => ({
+                        ...prev,
+                        [player.id]: newImageUri
+                      }));
+                    }
+                  })}
                   style={styles.playerCard}
                 >
                   <View style={styles.playerPhotoContainer}>
@@ -237,6 +260,7 @@ const Players = () => {
                   </View>
                 </TouchableOpacity>
               ))}
+
             </View>
           ))
         ) : (
@@ -382,6 +406,45 @@ const Players = () => {
 export default Players;
 
 const styles = StyleSheet.create({
+  // In Players.js styles
+  playerPhotoContainer: {
+    width: 55,
+    height: 55,
+    borderRadius: 27.5,
+    backgroundColor: '#E0E0E0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#DDD',
+  },
+  playerPhoto: {
+    width: '100%',
+    height: '100%',
+  },
+
+  // In PlayerDetail.js styles
+  profileImage: {
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    borderWidth: 4,
+    borderColor: '#1a237e',
+  },
+  cameraIconContainer: {
+    position: 'absolute',
+    right: 5,
+    bottom: 5,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'white',
+  },
   categoryContainer: {
     marginBottom: 15,
   },

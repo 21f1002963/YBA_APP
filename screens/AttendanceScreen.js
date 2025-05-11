@@ -1,42 +1,114 @@
-import { StyleSheet, Text, View, TouchableOpacity, FlatList } from 'react-native';
-import { useState } from 'react';
+import { StyleSheet, Text, View, TouchableOpacity, FlatList, Image } from 'react-native';
+import { useState, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
 import { Modal } from 'react-native';
-import  MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { useNavigation } from '@react-navigation/native';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
+import { getPlayerImage } from '../utils/playerStorage';
+import { getISTDateString } from '../utils/dateUtils';
+import { PlayersContext } from '../playersContext';
+import { useContext } from 'react';
 
 const AttendanceScreen = ({ route }) => {
   const navigation = useNavigation();
-  const [selectedDate, setSelectedDate] = useState('todayString');
+  const isFocused = useIsFocused();
+  const { players, playerPhotos, updatePlayers } = useContext(PlayersContext);
 
+  // Get today's date in YYYY-MM-DD format
   const today = new Date();
-  const todayString = today.toISOString().split('T')[0];
-  
-  const [showMenu, setShowMenu] = useState(false)
-  const [markedDates, setMarkedDates] = useState({
-    [todayString]: { selected: true, marked: true, dotColor: 'white', selectedColor: 'green', selectedTextColor: 'white' },
-  });
+  const todayString = getISTDateString();
 
-  const [players, setPlayers] = useState([
-    { id: 1, name: 'Rhythm Pawar', attendance: {} },
-    { id: 2, name: 'Ayona Eldos', attendance: {} },
-    { id: 3, name: 'Mohit Kumar', attendance: {} },
-    { id: 4, name: 'Vijay Purohit', attendance: {} },
-  ]);
+  // State management
+  const [selectedDate, setSelectedDate] = useState(todayString);
+  const [showMenu, setShowMenu] = useState(false);
+  const [markedDates, setMarkedDates] = useState({});
 
-  // Handle date selection
+  // Initialize marked dates
+  useEffect(() => {
+    const datesWithAttendance = {};
+
+    // Find all dates with attendance records
+    players.forEach(player => {
+      Object.keys(player.attendance || {}).forEach(date => {
+        if (player.attendance[date]) {
+          datesWithAttendance[date] = {
+            marked: true,
+            dotColor: 'blue',
+            selected: date === todayString,
+            selectedColor: date === todayString ? 'green' : 'black',
+            selectedTextColor: 'white'
+          };
+        }
+      });
+    });
+
+    // Ensure today is marked if it has attendance
+    if (!datesWithAttendance[todayString]) {
+      datesWithAttendance[todayString] = {
+        selected: true,
+        selectedColor: 'green',
+        selectedTextColor: 'white'
+      };
+    }
+
+    setMarkedDates(datesWithAttendance);
+  }, [players]);
+
+  // Load player photos
+  useEffect(() => {
+    const loadPlayerPhotos = async () => {
+      const photos = {};
+      await Promise.all(
+        players.map(async (player) => {
+          const imageUri = await getPlayerImage(player.id);
+          if (imageUri) {
+            photos[player.id] = imageUri;
+          }
+        })
+      );
+      // Update player photos in context
+    };
+
+    if (isFocused) {
+      loadPlayerPhotos();
+    }
+  }, [isFocused, players]);
+
   const onDayPress = (day) => {
-    setSelectedDate(day.dateString);
+    const dateKey = day.dateString;
+    const hasAttendance = players.some(p => p.attendance?.[dateKey]);
+
+    const newMarkedDates = {
+      ...markedDates,
+      // Update selected date
+      [dateKey]: {
+        ...markedDates[dateKey],
+        marked: hasAttendance,
+        dotColor: hasAttendance ? 'blue' : undefined,
+        selected: true,
+        selectedColor: dateKey === todayString ? 'green' : 'black',
+        selectedTextColor: 'white'
+      },
+      // Reset previous selection
+      [selectedDate]: {
+        ...markedDates[selectedDate],
+        selected: false,
+        selectedColor: undefined,
+        selectedTextColor: undefined
+      }
+    };
+
+    setSelectedDate(dateKey);
+    setMarkedDates(newMarkedDates);
   };
 
-  // Toggle attendance status for a player
   const toggleAttendance = (playerId) => {
     if (!selectedDate) return;
 
     const updatedPlayers = players.map(player => {
       if (player.id === playerId) {
-        const newStatus = player.attendance[selectedDate] === 'present' ? 'absent' : 'present';
+        const newStatus = player.attendance?.[selectedDate] === 'present' ? 'absent' : 'present';
         return {
           ...player,
           attendance: {
@@ -48,68 +120,70 @@ const AttendanceScreen = ({ route }) => {
       return player;
     });
 
-    setPlayers(updatedPlayers);
+    updatePlayers(updatedPlayers);
 
-    // Update marked dates
-    const presentCount = updatedPlayers.filter(p => p.attendance[selectedDate] === 'present').length;
-    const newMarkedDates = {
-      ...markedDates,
+    // Check if any attendance exists for this date
+    const hasAttendance = updatedPlayers.some(p => p.attendance?.[selectedDate]);
+
+    setMarkedDates(prev => ({
+      ...prev,
       [selectedDate]: {
+        ...prev[selectedDate],
+        marked: hasAttendance,
+        dotColor: 'blue', // Always set to blue if marked
         selected: true,
-        marked: presentCount > 0,
-        dotColor: presentCount === updatedPlayers.length ? 'green' : 'orange'
+        selectedColor: selectedDate === todayString ? 'green' : 'black',
+        selectedTextColor: 'white'
       }
-    };
-    setMarkedDates(newMarkedDates);
+    }));
+  };
+
+  // Calendar theme configuration
+  const calendarTheme = {
+    todayTextColor: '#1a237e',
+    arrowColor: '#1a237e',
+    'stylesheet.calendar.header': {
+      dayTextAtIndex0: { color: 'red' },
+      dayTextAtIndex6: { color: 'red' }
+    },
+    'stylesheet.calendar.main': {
+      dayContainer: {
+        justifyContent: 'center',
+        alignItems: 'center',
+      },
+      dot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        opacity: 1,
+      }
+    }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={{ backgroundColor: 'black' }}>
-      <View style={styles.header}>
-        <Text style={styles.headerText}>Attendance</Text>
-        <TouchableOpacity onPress={() => setShowMenu(true)}>
+        <View style={styles.header}>
+          <Text style={styles.headerText}>Attendance</Text>
+          <TouchableOpacity onPress={() => setShowMenu(true)}>
             <MaterialIcons name="menu" size={28} color="white" />
-        </TouchableOpacity>
-      </View>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <View style={{
-        margin: 10,
-        borderRadius: 15,
-        overflow: 'hidden',
-        elevation: 19,
-        shadowColor: '#000',
-        borderColor: 'black',
-        borderWidth: 0.2,
-        backgroundColor: 'white',
-      }}>
+      <View style={styles.calendarContainer}>
         <Calendar
           onDayPress={onDayPress}
           markedDates={markedDates}
           markingType={'multi-dot'}
-          theme={{
-            selectedDayBackgroundColor: '#1a237e',
-            todayTextColor: '#1a237e',
-            arrowColor: '#1a237e',
-          }}
+          theme={calendarTheme}
+          current={todayString}
         />
       </View>
 
       {selectedDate && (
-        <View style={{
-          padding: 15,
-          backgroundColor: '#e0f7fa',
-          borderWidth: 1,
-          marginHorizontal: 10,
-          borderRadius: 15,
-          marginTop: 5,
-        }}>
-          <Text style={{
-            fontSize: 17,
-            fontWeight: '600',
-            textAlign: 'center',
-          }}>
+        <View style={styles.dateDisplay}>
+          <Text style={styles.dateText}>
             {new Date(selectedDate).toLocaleDateString('en-US', {
               weekday: 'long',
               year: 'numeric',
@@ -127,15 +201,25 @@ const AttendanceScreen = ({ route }) => {
           <TouchableOpacity
             style={styles.playerItem}
             onPress={() => toggleAttendance(item.id)}
-            disabled={!selectedDate}
           >
+            <View style={styles.playerImageContainer}>
+              {playerPhotos[item.id] ? (
+                <Image
+                  source={{ uri: playerPhotos[item.id] }}
+                  style={styles.playerImage}
+                />
+              ) : (
+                <MaterialIcons name="person" size={32} color="#666" />
+              )}
+            </View>
+
             <Text style={styles.playerName}>{item.name}</Text>
             <View style={[
               styles.attendanceIndicator,
-              item.attendance[selectedDate] === 'present' ? styles.present : styles.absent
+              item.attendance?.[selectedDate] === 'present' ? styles.present : styles.absent
             ]}>
               <Text style={styles.attendanceText}>
-                {item.attendance[selectedDate] === 'present' ? 'Present' : 'Absent'}
+                {item.attendance?.[selectedDate] === 'present' ? 'Present' : 'Absent'}
               </Text>
             </View>
           </TouchableOpacity>
@@ -149,14 +233,14 @@ const AttendanceScreen = ({ route }) => {
         animationType="fade"
         onRequestClose={() => setShowMenu(false)}
       >
-        <TouchableOpacity 
-          style={styles.menuOverlay} 
-          activeOpacity={1} 
+        <TouchableOpacity
+          style={styles.menuOverlay}
+          activeOpacity={1}
           onPress={() => setShowMenu(false)}
         >
           <View style={styles.menuCard}>
-            <TouchableOpacity 
-              style={styles.menuOption} 
+            <TouchableOpacity
+              style={styles.menuOption}
               onPress={() => {
                 setShowMenu(false);
                 navigation.navigate('AttendanceChart', { players });
@@ -165,8 +249,8 @@ const AttendanceScreen = ({ route }) => {
               <MaterialIcons name="insert-chart" size={24} color="#1a237e" />
               <Text style={styles.menuOptionText}>Attendance Chart</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.menuOption} 
+            <TouchableOpacity
+              style={styles.menuOption}
               onPress={() => {
                 setShowMenu(false);
                 navigation.navigate('AttendanceRankers', { players });
@@ -183,43 +267,6 @@ const AttendanceScreen = ({ route }) => {
 };
 
 const styles = StyleSheet.create({
-  menuOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-dark overlay
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  // Menu Card (white rounded container for options)
-  menuCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    paddingVertical: 10,
-    width: '80%', // Covers 80% of screen width
-    elevation: 5, // Shadow (Android)
-    shadowColor: '#000', // Shadow (iOS)
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    marginLeft: 10,
-    marginBottom: 20,
-  },
-
-  // Individual Menu Option (row with icon + text)
-  menuOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-  },
-
-  // Text style for menu options
-  menuOptionText: {
-    marginLeft: 15,
-    fontSize: 17,
-    color: '#1a237e', // Dark blue (matches your icon color)
-    fontWeight: '500',
-  },
   container: {
     flex: 1,
     backgroundColor: 'white',
@@ -235,7 +282,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 6,
-    zIndex: 100, // Ensures header stays above other elements
+    zIndex: 100,
     borderBottomWidth: 2,
     borderBottomColor: '#0d47a1',
     flexDirection: 'row',
@@ -243,18 +290,51 @@ const styles = StyleSheet.create({
   },
   headerText: {
     fontSize: 24,
-    fontWeight: '700', // Extra bold
-    textTransform: 'uppercase', // Makes text stand out more
-    letterSpacing: 1.2, // Improves readability
-    textShadowColor: 'rgba(0, 0, 0, 0.3)', // Subtle text shadow
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
     color: 'white',
     marginLeft: 92,
   },
-  
-  listContainer: {
-    padding: 10,
+  calendarContainer: {
+    margin: 10,
+    borderRadius: 15,
+    overflow: 'hidden',
+    elevation: 19,
+    shadowColor: '#000',
+    borderColor: 'black',
+    borderWidth: 0.2,
+    backgroundColor: 'white',
+  },
+  dateDisplay: {
+    padding: 15,
+    backgroundColor: '#e0f7fa',
+    borderWidth: 1,
+    marginHorizontal: 10,
+    borderRadius: 15,
+    marginTop: 5,
+  },
+  dateText: {
+    fontSize: 17,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  playerImageContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 40,
+    backgroundColor: '#E0E0E0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    overflow: 'hidden',
+  },
+  playerImage: {
+    width: '100%',
+    height: '100%',
   },
   playerItem: {
     flexDirection: 'row',
@@ -267,8 +347,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   playerName: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 19.5,
+    fontWeight: '600',
   },
   attendanceIndicator: {
     paddingHorizontal: 12,
@@ -284,6 +364,40 @@ const styles = StyleSheet.create({
   attendanceText: {
     color: 'white',
     fontWeight: 'bold',
+  },
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  menuCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    paddingVertical: 10,
+    width: '80%',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    marginLeft: 10,
+    marginBottom: 20,
+  },
+  menuOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+  },
+  menuOptionText: {
+    marginLeft: 15,
+    fontSize: 17,
+    color: '#1a237e',
+    fontWeight: '500',
+  },
+  listContainer: {
+    padding: 10,
   },
 });
 

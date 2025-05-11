@@ -7,6 +7,10 @@ import { Platform } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { Image } from 'react-native';
 import { TouchableOpacity } from 'react-native';
+import { FlatList } from 'react-native-gesture-handler';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 // import LinearGradient from 'react-native-linear-gradient';
 
 const HomeScreen = () => {
@@ -22,7 +26,7 @@ const HomeScreen = () => {
       case 'tournaments':
         return <Tournaments />
       case 'players':
-        return <Players/> 
+        return <Players />
       default:
         return null
     }
@@ -95,10 +99,9 @@ const HomeScreen = () => {
             ios: 'ComicRelief-Regular',    // iOS
             android: 'comicrelief_regular' // Android
           })
-        }}>
-          YBA</Text>
+        }}>YBA</Text>
 
-        <View style={{
+        {/* <View style={{
           flexDirection: 'row', alignItems: 'center', marginTop: 10, width: '90%', flexDirection: 'row',
           backgroundColor: 'white',
           borderRadius: 25,
@@ -129,7 +132,8 @@ const HomeScreen = () => {
               paddingLeft: 10,
             }}
           />
-        </View>
+        </View> */}
+
       </View>
       <TabView
         navigationState={{ index, routes }}
@@ -152,6 +156,7 @@ const HomeScreen = () => {
               borderBottomWidth: 3,
               borderBottomColor: '#f0f0f0',
               height: 60,
+              
             }}
             labelStyle={{
               fontWeight: '600',
@@ -165,6 +170,8 @@ const HomeScreen = () => {
               borderRightWidth: 3,
               borderRightColor: 'grey',
               paddingBottom: 6,
+              // marginLeft: 10,
+              // paddingLeft: 20,
             }}
             renderLabel={({ route, focused, color }) => (
               <View style={{ alignItems: 'center' }}>

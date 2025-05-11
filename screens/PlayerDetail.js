@@ -11,10 +11,16 @@ import CoachAssessment from './CoachAssessment';
 import DailyMetrics from './DailyMetrics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect } from 'react';
+import { savePlayerImage, getPlayerImage } from '../utils/playerStorage';
+import { playersData } from '../utils/playersData';
+import { PlayersContext } from '../playersContext';
+import { useContext } from 'react'; // Added for context
 
 
 const PlayerDetail = ({ route }) => {
-    const { player } = route.params;
+    const { playerId } = route.params;
+    const { players, playerPhotos, updatePlayerPhoto } = useContext(PlayersContext);
+    const player = players.find(p => p.id === playerId);
     const [notes, setNotes] = useState('');
     const navigation = useNavigation();
     const [coachNotes, setCoachNotes] = useState([]);
@@ -24,7 +30,14 @@ const PlayerDetail = ({ route }) => {
     });
     const [playerMetrics, setPlayerMetrics] = useState([]);
     const [rating, setRating] = useState(3);
-    const [playerImage, setPlayerImage] = useState(player.image || '');
+    if (!player) {
+        return (
+            <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <Text>Player not found</Text>
+            </SafeAreaView>
+        );
+    }
+    const [playerImage, setPlayerImage] = useState(playerPhotos[playerId] || '');
 
     const addCoachNote = () => {
         if (notes.trim()) {
@@ -88,53 +101,143 @@ const PlayerDetail = ({ route }) => {
                         buttonPositive: "OK"
                     }
                 );
-                return granted === PermissionsAndroid.RESULTS.GRANTED;
+                if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+                    return true;
+                } else {
+                    Alert.alert('Permission denied', 'You need to grant camera permissions to take photos');
+                    return false;
+                }
             } catch (err) {
                 console.warn(err);
                 return false;
             }
         }
-        return true;
+        return true; // iOS always returns true
+    };
+
+    useEffect(() => {
+        const loadPlayerImage = async () => {
+            const imageUri = await getPlayerImage(player.id);
+            if (imageUri) {
+                setPlayerImage(imageUri);
+            }
+        };
+        loadPlayerImage();
+    }, [player.id]);
+
+    // PlayerDetail.js
+    const handleImageResponse = async (response) => {
+        if (response.didCancel) return;
+        if (response.errorCode) {
+            Alert.alert('Error', `Failed to capture photo: ${response.errorMessage}`);
+            return;
+        }
+
+        if (response.assets?.[0]?.uri) {
+            const uri = response.assets[0].uri;
+            setPlayerImage(uri);
+            await savePlayerImage(player.id, uri);
+            updatePlayerPhoto(player.id, uri);
+            Alert.alert('Success', 'Profile picture updated');
+        }
+    };
+
+    const capturePhotoWithBackCamera = async () => {
+        try {
+            console.log('Attempting to open camera...');
+
+            // 1. Request camera permissions
+            const hasPermission = await requestCameraPermission();
+            if (!hasPermission) {
+                Alert.alert('Permission required', 'Camera access is needed to take photos');
+                return;
+            }
+
+            // 2. Set camera options
+            const options = {
+                mediaType: 'photo',
+                quality: 0.8, // Reduced quality for better performance
+                maxWidth: 800,
+                maxHeight: 800,
+                includeBase64: false,
+                cameraType: 'back',
+                saveToPhotos: Platform.OS === 'ios', // Only save to photos on iOS
+                durationLimit: 30, // For video, but good to have
+                videoQuality: 'high',
+            };
+
+            console.log('Launching camera with options:', options);
+
+            // 3. Launch camera
+            const response = await launchCamera(options);
+            console.log('Camera response:', response);
+
+            // 4. Handle response
+            if (response.didCancel) {
+                console.log('User cancelled camera');
+                return;
+            }
+
+            if (response.errorCode) {
+                console.error('Camera Error:', response.errorMessage);
+                Alert.alert('Error', `Camera error: ${response.errorMessage || 'Unknown error'}`);
+                return;
+            }
+
+            if (!response.assets || !response.assets[0]?.uri) {
+                console.error('Invalid response:', response);
+                Alert.alert('Error', 'No image was captured');
+                return;
+            }
+
+            const uri = response.assets[0].uri;
+            console.log('Captured image URI:', uri);
+
+            // 5. Update state and storage
+            setPlayerImage(uri);
+
+            const playerData = {
+                ...player,
+                image: uri
+            };
+
+            await AsyncStorage.setItem(`player_${player.id}`, JSON.stringify(playerData));
+
+            if (onPhotoUpdate) {
+                onPhotoUpdate(uri);
+            }
+
+            Alert.alert('Success', 'Profile picture updated!');
+
+        } catch (error) {
+            console.error('Camera capture failed:', error);
+            Alert.alert('Error', `Failed to capture photo: ${error.message || 'Unknown error'}`);
+        }
     };
 
     const handleImagePick = async (source) => {
-        const Galleryoptions = {
+        const options = {
             mediaType: 'photo',
             quality: 1,
             maxWidth: 500,
             maxHeight: 500,
             includeBase64: false,
             selectionLimit: 1,
-            allowsEditing: true
-        };
-
-        const Cameraoptions = {
-            mediaType: 'photo',
-            quality: 1,
-            maxWidth: 500,
-            maxHeight: 500,
-            cameraType: 'back',
             saveToPhotos: true,
         };
 
         try {
+            let response;
             if (source === 'camera') {
                 const hasPermission = await requestCameraPermission();
                 if (!hasPermission) return;
-
-                launchCamera(Cameraoptions, (response) => {
-                    if (!response.didCancel && !response.error) {
-                        setPlayerImage(prev => ({ ...prev, image: response.assets[0].uri }));
-                    }
-                });
+                response = await launchCamera(options);
             } else {
-                launchImageLibrary(Galleryoptions, (response) => {
-                    if (!response.didCancel && !response.error) {
-                        setPlayerImage(prev => ({ ...prev, image: response.assets[0].uri }));
-                    }
-                });
+                response = await launchImageLibrary(options);
             }
+            handleImageResponse(response); // This is where we use it for both camera and gallery
         } catch (error) {
+            console.error(error);
             Alert.alert('Error', 'Failed to pick image');
         }
     };
@@ -199,10 +302,8 @@ const PlayerDetail = ({ route }) => {
                 Alert.alert('Error', 'Failed to load player details');
             }
         };
-
         loadPlayerDetails();
     }, []);
-
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: 'black' }}>
@@ -236,10 +337,12 @@ const PlayerDetail = ({ route }) => {
                         borderWidth: 4,
                         borderColor: '#1a237e',
                     }}>
-                        <TouchableOpacity onPress={() => handleImagePick('gallery')}
-                            onLongPress={() => handleImagePick('camera')}>
+                        <TouchableOpacity
+                            onPress={() => handleImagePick('gallery')}
+                            onLongPress={capturePhotoWithBackCamera}
+                        >
                             <Image
-                                source={player.image ? { uri: player.image } : require('../assets/dp.jpg')}
+                                source={playerImage ? { uri: playerImage } : require('../assets/dp.jpg')}
                                 style={styles.profileImage}
                             />
                             <View style={styles.cameraIconContainer}>
@@ -364,6 +467,45 @@ const PlayerDetail = ({ route }) => {
 };
 
 const styles = StyleSheet.create({
+    // In Players.js styles
+    playerPhotoContainer: {
+        width: 55,
+        height: 55,
+        borderRadius: 27.5,
+        backgroundColor: '#E0E0E0',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 15,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: '#DDD',
+    },
+    playerPhoto: {
+        width: '100%',
+        height: '100%',
+    },
+
+    // In PlayerDetail.js styles
+    profileImage: {
+        width: 150,
+        height: 150,
+        borderRadius: 75,
+        borderWidth: 4,
+        borderColor: '#1a237e',
+    },
+    cameraIconContainer: {
+        position: 'absolute',
+        right: 5,
+        bottom: 5,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: 'white',
+    },
     showMoreButton: {
         flexDirection: 'row',
         alignItems: 'center',

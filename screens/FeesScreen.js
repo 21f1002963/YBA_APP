@@ -1,147 +1,219 @@
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, SectionList } from 'react-native';
-import React, { useState } from 'react';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Modal, TextInput, Alert, SectionList } from 'react-native';
+import React, { useState, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { TextInput } from 'react-native-gesture-handler';
-const FeesScreen = () => {
-  // Sample player data with payment status
-  const [players, setPlayers] = useState([
-    { id: 1, name: 'Rhythm Pawar', paid: true, lastPayment: '2023-10-15', amount: 5000 },
-    { id: 2, name: 'Ayona Eldos', paid: false, lastPayment: '2023-08-20', amount: 5000, defaultMonths: 2 },
-    { id: 3, name: 'Mohit Kumar', paid: false, lastPayment: '2023-06-10', amount: 5000, defaultMonths: 4 },
-    { id: 4, name: 'Vijay Purohit', paid: true, lastPayment: '2023-10-01', amount: 5000 },
-    { id: 5, name: 'Rahul Sharma', paid: false, lastPayment: '2023-05-15', amount: 5000, defaultMonths: 5 },
-  ]);
+import DateTimePicker from '@react-native-community/datetimepicker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { playersData } from '../utils/playersData';
+import { PlayersContext } from '../playersContext';
+import { useContext } from 'react'; // Added for context
 
-  // State for new payment modal
+
+const FeesScreen = () => {
+  // Sample player data
+  const { players } = useContext(PlayersContext);
+
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
-  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentAmount, setPaymentAmount] = useState('5000');
+  const [paymentDate, setPaymentDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [feesData, setFeesData] = useState({});
 
-  // Mark payment for a player
-  const markPayment = (playerId) => {
-    setPlayers(players.map(player => {
-      if (player.id === playerId) {
-        return {
-          ...player,
-          paid: true,
-          lastPayment: new Date().toISOString().split('T')[0],
-          defaultMonths: 0
-        };
-      }
-      return player;
-    }));
-    setShowPaymentModal(false);
+  // Get current month in YYYY-MM format
+  const getCurrentMonthKey = () => {
+    return `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
   };
 
-  // Categorize players
-  const paidPlayers = players.filter(player => player.paid);
-  const unpaidPlayers = players.filter(player => !player.paid);
-  const defaulters = players.filter(player => !player.paid && player.defaultMonths >= 3);
+  // Change month handler
+  const changeMonth = (increment) => {
+    let newMonth = selectedMonth + increment;
+    let newYear = selectedYear;
 
-  // Sort defaulters by longest default time
-  const sortedDefaulters = [...defaulters].sort((a, b) => b.defaultMonths - a.defaultMonths);
+    if (newMonth < 0) {
+      newMonth = 11;
+      newYear--;
+    } else if (newMonth > 11) {
+      newMonth = 0;
+      newYear++;
+    }
 
-  // Data for section list
+    setSelectedMonth(newMonth);
+    setSelectedYear(newYear);
+  };
+
+  // Load fees data from storage
+  useEffect(() => {
+    const loadFeesData = async () => {
+      try {
+        const storedData = await AsyncStorage.getItem('feesData');
+        if (storedData) {
+          setFeesData(JSON.parse(storedData));
+        } else {
+          // Initialize with empty data structure
+          const initialData = {};
+          players.forEach(player => {
+            initialData[player.id] = {};
+          });
+          setFeesData(initialData);
+          await AsyncStorage.setItem('feesData', JSON.stringify(initialData));
+        }
+      } catch (error) {
+        console.error('Error loading fees data:', error);
+      }
+    };
+
+    loadFeesData();
+  }, []);
+
+  // Save fees data to storage
+  useEffect(() => {
+    const saveFeesData = async () => {
+      try {
+        await AsyncStorage.setItem('feesData', JSON.stringify(feesData));
+      } catch (error) {
+        console.error('Error saving fees data:', error);
+      }
+    };
+
+    saveFeesData();
+  }, [feesData]);
+
+  // Mark payment for a player
+  const markPayment = () => {
+    if (!paymentAmount || isNaN(paymentAmount)) {
+      Alert.alert('Error', 'Please enter a valid amount');
+      return;
+    }
+
+    const monthKey = getCurrentMonthKey();
+    const formattedDate = paymentDate.toISOString().split('T')[0];
+
+    setFeesData(prevData => {
+      const newData = { ...prevData };
+      if (!newData[selectedPlayer.id]) {
+        newData[selectedPlayer.id] = {};
+      }
+      newData[selectedPlayer.id][monthKey] = {
+        paid: true,
+        amount: Number(paymentAmount),
+        date: formattedDate
+      };
+      return newData;
+    });
+
+    setShowPaymentModal(false);
+    Alert.alert('Success', 'Payment recorded successfully');
+  };
+
+  // Get player payment status (simplified without defaulter logic)
+  const getPlayerStatus = () => {
+    const currentMonthKey = getCurrentMonthKey();
+    
+    return players.map(player => {
+      const playerFees = feesData[player.id] || {};
+      
+      // Current month payment status
+      const currentPayment = playerFees[currentMonthKey] || { 
+        paid: false, 
+        amount: 5000
+      };
+
+      return {
+        ...player,
+        currentPayment
+      };
+    });
+  };
+
+  const playerStatus = getPlayerStatus();
+  const paidPlayers = playerStatus.filter(p => p.currentPayment.paid);
+  const unpaidPlayers = playerStatus.filter(p => !p.currentPayment.paid);
+
+  // Simplified sections - only paid and unpaid
   const sections = [
     {
-      title: '⚠️ Chronic Defaulters (3+ months)',
-      data: sortedDefaulters,
+      title: `❌ Unpaid for ${monthNames[selectedMonth]} ${selectedYear}`,
+      data: unpaidPlayers,
     },
     {
-      title: '⚠️ Recent Defaulters',
-      data: unpaidPlayers.filter(player => !defaulters.includes(player)),
-    },
-    {
-      title: '✅ Paid Players',
+      title: `✔️ Paid for ${monthNames[selectedMonth]} ${selectedYear}`,
       data: paidPlayers,
     }
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Payment Modal */}
-      {showPaymentModal && (
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Record Payment for {selectedPlayer?.name}</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Amount"
-              keyboardType="numeric"
-              value={paymentAmount}
-              onChangeText={setPaymentAmount}
-            />
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setShowPaymentModal(false)}
-              >
-                <Text style={styles.buttonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.confirmButton]}
-                onPress={() => markPayment(selectedPlayer.id)}
-              >
-                <Text style={styles.buttonText}>Confirm Payment</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      )}
-
+    <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
+      {/* Header */}
       <View style={{ backgroundColor: 'black' }}>
-        <View style={{
-          padding: 20,
-          alignItems: 'center',
-          backgroundColor: '#1a237e',
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
-          elevation: 8,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.2,
-          shadowRadius: 6,
-          zIndex: 100, // Ensures header stays above other elements
-          borderBottomWidth: 2,
-          borderBottomColor: '#0d47a1',
-        }}>
-          <Text style={{
-            fontSize: 24,
-            fontWeight: '700', // Extra bold
-            textTransform: 'uppercase', // Makes text stand out more
-            letterSpacing: 1.2, // Improves readability
-            textShadowColor: 'rgba(0, 0, 0, 0.3)', // Subtle text shadow
-            textShadowOffset: { width: 1, height: 1 },
-            textShadowRadius: 2,
-            color: 'white',
-          }}>Fees Records</Text>
+        <View style={styles.header}>
+          <Text style={styles.headerText}>Fee Payment</Text>
         </View>
       </View>
-      
-      {/* Main Content */}
+
+      {/* Month Selector */}
+      <View style={styles.monthSelector}>
+        <TouchableOpacity onPress={() => changeMonth(-1)}>
+          <MaterialIcons name="chevron-left" size={30} color="#1a237e" />
+        </TouchableOpacity>
+
+        <Text style={styles.monthText}>
+          {monthNames[selectedMonth]} {selectedYear}
+        </Text>
+
+        <TouchableOpacity onPress={() => changeMonth(1)}>
+          <MaterialIcons name="chevron-right" size={30} color="#1a237e" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Simplified Summary Card */}
+      <View style={styles.summaryCard}>
+        <Text style={styles.summaryTitle}>Fees Summary</Text>
+        <View style={styles.summaryRow}>
+          <Text style={{fontSize: 17}}>Total Players:</Text>
+          <Text style={styles.summaryValue}>{players.length}</Text>
+        </View>
+        <View style={styles.summaryRow}>
+          <Text style={{fontSize: 17}}>Paid Players:</Text>
+          <Text style={[styles.summaryValue, styles.paidValue]}>{paidPlayers.length}</Text>
+        </View>
+        <View style={styles.summaryRow}>
+          <Text style={{fontSize: 17}}>Unpaid Players:</Text>
+          <Text style={[styles.summaryValue, styles.unpaidValue]}>{unpaidPlayers.length}</Text>
+        </View>
+      </View>
+
+      {/* Players List */}
       <SectionList
         sections={sections}
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
           <View style={[
             styles.playerCard,
-            !item.paid && styles.unpaidCard,
-            defaulters.includes(item) && styles.defaulterCard
+            !item.currentPayment.paid && styles.unpaidCard
           ]}>
             <View style={styles.playerInfo}>
               <Text style={styles.playerName}>{item.name}</Text>
-              <Text style={styles.paymentInfo}>
-                {item.paid ? `Paid ₹${item.amount} on ${item.lastPayment}` :
-                  `Due: ₹${item.amount} (${item.defaultMonths || 0} months)`}
-              </Text>
+
+              {item.currentPayment.paid ? (
+                <Text style={styles.paidInfo}>Paid ₹{item.currentPayment.amount} on {item.currentPayment.date.split('-').reverse().join('-')}</Text>
+              ) : (
+                <Text style={styles.unpaidInfo}>
+                  Due: ₹{item.currentPayment.amount}
+                </Text>
+              )}
             </View>
-            {!item.paid && (
+
+            {!item.currentPayment.paid && (
               <TouchableOpacity
                 style={styles.payButton}
                 onPress={() => {
                   setSelectedPlayer(item);
-                  setPaymentAmount(item.amount.toString());
+                  setPaymentAmount('5000');
+                  setPaymentDate(new Date());
                   setShowPaymentModal(true);
                 }}
               >
@@ -155,48 +227,131 @@ const FeesScreen = () => {
             <Text style={styles.sectionTitle}>{section.title}</Text>
           </View>
         )}
-        ListHeaderComponent={
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryTitle}>Fees Summary</Text>
-            <View style={styles.summaryRow}>
-              <Text>Total Players:</Text>
-              <Text style={styles.summaryValue}>{players.length}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text>Paid Players:</Text>
-              <Text style={[styles.summaryValue, styles.paidValue]}>{paidPlayers.length}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text>Unpaid Players:</Text>
-              <Text style={[styles.summaryValue, styles.unpaidValue]}>{unpaidPlayers.length}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text>Chronic Defaulters:</Text>
-              <Text style={[styles.summaryValue, styles.defaulterValue]}>{defaulters.length}</Text>
+        stickySectionHeadersEnabled={true}
+        contentContainerStyle={styles.listContainer}
+      />
+
+      {/* Payment Modal */}
+      <Modal
+        transparent={true}
+        visible={showPaymentModal}
+        onRequestClose={() => setShowPaymentModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Record Payment for {selectedPlayer?.name}</Text>
+
+            <Text style={styles.modalSubtitle}>
+              {monthNames[selectedMonth]} {selectedYear}
+            </Text>
+
+            <Text style={styles.inputLabel}>Amount:</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="5000"
+              keyboardType="numeric"
+              value={paymentAmount}
+              onChangeText={setPaymentAmount}
+            />
+
+            <Text style={styles.inputLabel}>Payment Date:</Text>
+            <TouchableOpacity
+              style={styles.dateInput}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Text style={{fontSize: 16}}>{paymentDate.toLocaleDateString()}</Text>
+            </TouchableOpacity>
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={paymentDate}
+                mode="date"
+                display="default"
+                onChange={(event, date) => {
+                  setShowDatePicker(false);
+                  if (date) {
+                    setPaymentDate(date);
+                  }
+                }}
+              />
+            )}
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowPaymentModal(false)}
+              >
+                <Text style={styles.buttonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={markPayment}
+              >
+                <Text style={styles.buttonText}>Confirm Payment</Text>
+              </TouchableOpacity>
             </View>
           </View>
-        }
-      />
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
+  header: {
+    padding: 20,
+    alignItems: 'center',
+    backgroundColor: '#1a237e',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    zIndex: 100,
+    borderBottomWidth: 2,
+    borderBottomColor: '#0d47a1',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  headerText: {
+    fontSize: 24,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+    color: 'white',
+    marginLeft: 92,
+  },
+  monthSelector: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 15,
+    marginHorizontal: 20,
+    marginTop: 10,
+    borderBottomWidth: 3,
+    borderBottomColor: '#e0e0e0',
+  },
+  monthText: {
+    fontSize: 19,
+    fontWeight: '600',
+    color: '#1a237e',
   },
   summaryCard: {
     backgroundColor: 'white',
-    padding: 20,
+    padding: 16,
     margin: 15,
     borderRadius: 10,
-    elevation: 3,
+    elevation: 15,
   },
   summaryTitle: {
-    fontSize: 18,
+    fontSize: 21,
     fontWeight: 'bold',
-    marginBottom: 15,
+    marginBottom: 12,
     color: '#1a237e',
   },
   summaryRow: {
@@ -206,6 +361,7 @@ const styles = StyleSheet.create({
   },
   summaryValue: {
     fontWeight: '600',
+    fontSize: 18,
   },
   paidValue: {
     color: '#4CAF50',
@@ -213,94 +369,122 @@ const styles = StyleSheet.create({
   unpaidValue: {
     color: '#F44336',
   },
-  defaulterValue: {
-    color: '#FF5722',
-  },
   sectionHeader: {
-    backgroundColor: '#e0e0e0',
+    backgroundColor: 'rgba(44, 225, 228, 0.28)',
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: 'rgba(44, 225, 228, 0.85)',
+    borderRadius: 10,
     padding: 10,
-    marginTop: 15,
+    marginHorizontal: 5,
+    marginVertical: 8,
   },
   sectionTitle: {
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 18,
+    // color: '#333',
   },
   playerCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: 'white',
-    padding: 15,
+    padding: 16,
     marginHorizontal: 15,
-    marginVertical: 5,
-    borderRadius: 8,
-    elevation: 2,
+    marginVertical: 6,
+    borderRadius: 22,
+    elevation: 10,
+    borderLeftWidth: 5,
+    borderLeftColor: 'green',
   },
   unpaidCard: {
     borderLeftWidth: 5,
     borderLeftColor: '#F44336',
   },
-  defaulterCard: {
-    borderLeftWidth: 5,
-    borderLeftColor: '#FF5722',
-  },
   playerInfo: {
     flex: 1,
   },
   playerName: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 5,
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 6,
   },
-  paymentInfo: {
-    fontSize: 14,
-    color: '#666',
+  paidInfo: {
+    color: '#2e7d32',
+    fontSize: 15,
+  },
+  unpaidInfo: {
+    color: '#d32f2f',
+    fontSize: 15,
   },
   payButton: {
     backgroundColor: '#4CAF50',
     padding: 10,
-    borderRadius: 5,
+    borderRadius: 8,
     marginLeft: 10,
   },
   modalContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 100,
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalContent: {
     backgroundColor: 'white',
-    width: '80%',
-    padding: 20,
-    borderRadius: 10,
+    width: '90%',
+    borderRadius: 20,
+    padding: 25,
+    elevation: 10,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 15,
+    color: '#1a237e',
     textAlign: 'center',
   },
+  modalSubtitle: {
+    fontSize: 19,
+    color: 'black',
+    fontWeight: '600',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  inputLabel: {
+    fontSize: 17,
+    color: '#555',
+    marginBottom: 8,
+    marginTop: 10,
+  },
   input: {
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: '#ddd',
+    borderRadius: 9,
     padding: 10,
-    marginBottom: 20,
-    borderRadius: 5,
+    marginBottom: 15,
+    fontSize: 16,
+  },
+  dateInput: {
+    borderWidth: 2,
+    borderColor: '#ddd',
+    borderRadius: 9,
+    padding: 10,
+    marginBottom: 15,
+    height: 50,
+    justifyContent: 'center',
   },
   modalButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: 10,
+    gap: 5,
   },
   modalButton: {
-    padding: 10,
-    borderRadius: 5,
-    width: '48%',
+    padding: 12,
+    borderRadius: 9,
     alignItems: 'center',
+    flex: 1,
+    marginHorizontal: 5,
   },
   cancelButton: {
     backgroundColor: '#f44336',
@@ -311,6 +495,10 @@ const styles = StyleSheet.create({
   buttonText: {
     color: 'white',
     fontWeight: 'bold',
+    fontSize: 14,
+  },
+  listContainer: {
+    paddingBottom: 20,
   },
 });
 
