@@ -15,6 +15,8 @@ import Players from '../screens/Players';
 import Tournaments from '../screens/Tournaments';
 import CoachAssessment from '../screens/CoachAssessment';
 import DailyMetrics from '../screens/DailyMetrics';
+import AttendanceChart from '../screens/AttendanceChart';
+import AttendanceRankers from '../screens/AttendanceRankers';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -63,7 +65,7 @@ const StackNavigator = () => {
                 />
                 <Tab.Screen
                     name="Attendance"
-                    component={AttendanceScreen}
+                    component={AttendanceStack}
                     options={{
                         headerShown: false,
                         tabBarIcon: ({ focused }) => (
@@ -128,9 +130,30 @@ const StackNavigator = () => {
                     options={{
                         headerShown: false
                     }} />
+                
             </Stack.Navigator>
         );
     }
+
+    function AttendanceStack() {
+        return (
+            <Stack.Navigator screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="AttendanceScreen" component={AttendanceScreen}
+                    options={{
+                        headerShown: false
+                    }} />
+                <Stack.Screen name="AttendanceChart" component={AttendanceChart}
+                    options={{
+                        headerShown: false
+                    }} />
+                <Stack.Screen name="AttendanceRankers" component={AttendanceRankers}
+                    options={{
+                        headerShown: false
+                    }} />
+            </Stack.Navigator>
+        );
+    }
+
 
     return (
         <NavigationContainer>

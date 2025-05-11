@@ -1,23 +1,29 @@
 import { StyleSheet, Text, View, TouchableOpacity, FlatList } from 'react-native';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
-import { format } from 'date-fns';
+import { Modal } from 'react-native';
+import  MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { useNavigation } from '@react-navigation/native';
 
 const AttendanceScreen = ({ route }) => {
-  const [selectedDate, setSelectedDate] = useState('');
+  const navigation = useNavigation();
+  const [selectedDate, setSelectedDate] = useState('todayString');
+
   const today = new Date();
   const todayString = today.toISOString().split('T')[0];
+  
+  const [showMenu, setShowMenu] = useState(false)
   const [markedDates, setMarkedDates] = useState({
     [todayString]: { selected: true, marked: true, dotColor: 'white', selectedColor: 'green', selectedTextColor: 'white' },
   });
+
   const [players, setPlayers] = useState([
     { id: 1, name: 'Rhythm Pawar', attendance: {} },
     { id: 2, name: 'Ayona Eldos', attendance: {} },
     { id: 3, name: 'Mohit Kumar', attendance: {} },
     { id: 4, name: 'Vijay Purohit', attendance: {} },
   ]);
-
 
   // Handle date selection
   const onDayPress = (day) => {
@@ -62,6 +68,9 @@ const AttendanceScreen = ({ route }) => {
       <View style={{ backgroundColor: 'black' }}>
       <View style={styles.header}>
         <Text style={styles.headerText}>Attendance</Text>
+        <TouchableOpacity onPress={() => setShowMenu(true)}>
+            <MaterialIcons name="menu" size={28} color="white" />
+        </TouchableOpacity>
       </View>
       </View>
 
@@ -133,11 +142,84 @@ const AttendanceScreen = ({ route }) => {
         )}
         contentContainerStyle={styles.listContainer}
       />
+
+      <Modal
+        visible={showMenu}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowMenu(false)}
+      >
+        <TouchableOpacity 
+          style={styles.menuOverlay} 
+          activeOpacity={1} 
+          onPress={() => setShowMenu(false)}
+        >
+          <View style={styles.menuCard}>
+            <TouchableOpacity 
+              style={styles.menuOption} 
+              onPress={() => {
+                setShowMenu(false);
+                navigation.navigate('AttendanceChart', { players });
+              }}
+            >
+              <MaterialIcons name="insert-chart" size={24} color="#1a237e" />
+              <Text style={styles.menuOptionText}>Attendance Chart</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.menuOption} 
+              onPress={() => {
+                setShowMenu(false);
+                navigation.navigate('AttendanceRankers', { players });
+              }}
+            >
+              <MaterialIcons name="leaderboard" size={24} color="#1a237e" />
+              <Text style={styles.menuOptionText}>Attendance Rankers</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-dark overlay
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // Menu Card (white rounded container for options)
+  menuCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    paddingVertical: 10,
+    width: '80%', // Covers 80% of screen width
+    elevation: 5, // Shadow (Android)
+    shadowColor: '#000', // Shadow (iOS)
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    marginLeft: 10,
+    marginBottom: 20,
+  },
+
+  // Individual Menu Option (row with icon + text)
+  menuOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+  },
+
+  // Text style for menu options
+  menuOptionText: {
+    marginLeft: 15,
+    fontSize: 17,
+    color: '#1a237e', // Dark blue (matches your icon color)
+    fontWeight: '500',
+  },
   container: {
     flex: 1,
     backgroundColor: 'white',
@@ -156,6 +238,8 @@ const styles = StyleSheet.create({
     zIndex: 100, // Ensures header stays above other elements
     borderBottomWidth: 2,
     borderBottomColor: '#0d47a1',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   headerText: {
     fontSize: 24,
@@ -166,6 +250,7 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
     color: 'white',
+    marginLeft: 92,
   },
   
   listContainer: {
